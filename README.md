@@ -28,5 +28,8 @@ Um die Aufgaben erfolgreich bearbeiten zu können, sollten folgende Voraussetzun
 ## Hilfsmittel
 - **[Glossar](Glossar.md):** Erklärungen der wichtigsten Fachbegriffe zu Business Automation und KI.
 
+## Lizenz
+Dieses Projekt ist unter der [MIT-Lizenz](LICENSE) lizenziert. Du kannst die Materialien gerne für eigene Zwecke nutzen und anpassen.
+
 ---
 *Viel Erfolg und viel Freude beim Automatisieren!*

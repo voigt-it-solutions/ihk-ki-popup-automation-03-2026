@@ -20,13 +20,20 @@ Um die Aufgaben erfolgreich bearbeiten zu können, sollten folgende Voraussetzun
    - Schritt-für-Schritt-Anleitung zur automatisierten E-Mail-Klassifizierung.
    - [KI Vorlage 1 (Basis)](Aufgabe%201/AI%20Vorlage%201.md)
    - [KI Vorlage 2 (Erweiterung)](Aufgabe%201/AI%20Vorlage%202.md)
+   - **[Lösung (Blueprint)](Aufgabe%201/lösung/Invoice%20E-Mail%20Automation%20(Agentic%20Workflow).blueprint.json)**
 
 2. **[Aufgabe 2: Agentic Workflow (Bonus)](Aufgabe%202%20(Bonus)/Aufgabe%202.md)**
    - Fortgeschrittene Automatisierung mit einem KI-Agenten, der selbstständig Entscheidungen trifft.
    - [KI Agent Vorlage](Aufgabe%202%20(Bonus)/AI%20Agent%20Vorlage.md)
+   - **[Lösung (Blueprint)](Aufgabe%202%20(Bonus)/lösung/Invoice%20E-Mail%20Automation%20(AI%20Agent).blueprint.json)**
 
 ## Hilfsmittel
 - **[Glossar](Glossar.md):** Erklärungen der wichtigsten Fachbegriffe zu Business Automation und KI.
+
+## Make.com Blueprints (Import/Export)
+Um die Lösungen oder Vorlagen in Make.com zu nutzen, kannst du Blueprints importieren und exportieren:
+- **Importieren:** Erstelle ein neues Szenario, klicke oben rechts auf die drei Punkte (...) und wähle **"Import blueprint"**. Wähle die `.json`-Datei aus.
+- **Exportieren:** Klicke im Szenario-Editor oben rechts auf die drei Punkte (...) und wähle **"Export blueprint"**, um dein Szenario als Datei zu speichern.
 
 ## Lizenz
 Dieses Projekt ist unter der [MIT-Lizenz](LICENSE) lizenziert. Du kannst die Materialien gerne für eigene Zwecke nutzen und anpassen.

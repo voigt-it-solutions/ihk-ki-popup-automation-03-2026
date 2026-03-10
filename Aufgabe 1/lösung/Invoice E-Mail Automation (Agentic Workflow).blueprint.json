@@ -1,0 +1,870 @@
+{
+    "name": "Invoice E-Mail Automation (Agentic Workflow)",
+    "flow": [
+        {
+            "id": 11,
+            "module": "microsoft-email:listMessages",
+            "version": 2,
+            "parameters": {
+                "__IMTCONN__": 13824026
+            },
+            "filter": null,
+            "mapper": {
+                "limit": "1",
+                "folder": "/",
+                "orderby": "createdDateTime desc"
+            },
+            "metadata": {
+                "designer": {
+                    "x": 0,
+                    "y": 900,
+                    "messages": [
+                        {
+                            "category": "setup",
+                            "severity": "error",
+                            "message": "Value must not be empty."
+                        }
+                    ]
+                },
+                "restore": {
+                    "expect": {
+                        "folder": {
+                            "mode": "chose",
+                            "path": [
+                                "Organisation",
+                                "2 - Projekte",
+                                "IHK KI-Popup",
+                                "01 Email-Eingang"
+                            ]
+                        },
+                        "orderby": {
+                            "mode": "chose",
+                            "label": "Created Date Time - Descending"
+                        }
+                    }
+                },
+                "parameters": [
+                    {
+                        "name": "__IMTCONN__",
+                        "type": "account:azure",
+                        "label": "Connection",
+                        "required": true
+                    }
+                ],
+                "expect": [
+                    {
+                        "name": "folder",
+                        "type": "folder",
+                        "label": "Mail Folder"
+                    },
+                    {
+                        "name": "search",
+                        "type": "text",
+                        "label": "Search"
+                    },
+                    {
+                        "name": "orderby",
+                        "type": "select",
+                        "label": "Order by",
+                        "validate": {
+                            "enum": [
+                                "subject asc",
+                                "subject desc",
+                                "createdDateTime asc",
+                                "createdDateTime desc",
+                                "lastModifiedDateTime asc",
+                                "lastModifiedDateTime desc",
+                                "receivedDateTime asc",
+                                "receivedDateTime desc"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "type": "uinteger",
+                        "label": "Limit"
+                    }
+                ]
+            }
+        },
+        {
+            "id": 12,
+            "module": "microsoft-email:listAttachments",
+            "version": 2,
+            "parameters": {
+                "__IMTCONN__": 13824026
+            },
+            "mapper": {
+                "limit": "10",
+                "message": "{{11.id}}"
+            },
+            "metadata": {
+                "designer": {
+                    "x": 300,
+                    "y": 900
+                },
+                "restore": {
+                    "expect": {
+                        "message": {
+                            "mode": "edit"
+                        }
+                    },
+                    "parameters": {}
+                },
+                "parameters": [
+                    {
+                        "name": "__IMTCONN__",
+                        "type": "account:azure",
+                        "label": "Connection",
+                        "required": true
+                    }
+                ],
+                "expect": [
+                    {
+                        "name": "message",
+                        "type": "select",
+                        "label": "Email ID",
+                        "required": true
+                    },
+                    {
+                        "name": "limit",
+                        "type": "uinteger",
+                        "label": "Limit"
+                    }
+                ]
+            }
+        },
+        {
+            "id": 27,
+            "module": "util:TextAggregator",
+            "version": 1,
+            "parameters": {
+                "feeder": 12,
+                "rowSeparator": "\n"
+            },
+            "filter": {
+                "name": "",
+                "conditions": [
+                    [
+                        {
+                            "a": "{{12.contentType}}",
+                            "b": "application/pdf",
+                            "o": "text:equal"
+                        }
+                    ]
+                ]
+            },
+            "mapper": {
+                "value": "Anhang Nr. {{12.`__IMTINDEX__`}} von {{12.`__IMTLENGTH__`}}: {{12.name}} (Typ: {{12.contentType}}) [ID: {{12.id}}]"
+            },
+            "metadata": {
+                "designer": {
+                    "x": 600,
+                    "y": 900
+                },
+                "restore": {
+                    "extra": {
+                        "feeder": {
+                            "label": "Microsoft 365 Email (Outlook) - List Attachments [12]"
+                        }
+                    },
+                    "parameters": {
+                        "rowSeparator": {
+                            "label": "New row"
+                        }
+                    }
+                },
+                "parameters": [
+                    {
+                        "name": "rowSeparator",
+                        "type": "select",
+                        "label": "Row separator",
+                        "validate": {
+                            "enum": [
+                                "\n",
+                                "\t",
+                                "other"
+                            ]
+                        }
+                    }
+                ],
+                "expect": [
+                    {
+                        "name": "value",
+                        "type": "text",
+                        "label": "Text"
+                    }
+                ],
+                "advanced": true
+            },
+            "flags": {
+                "groupBy": "attachements"
+            }
+        },
+        {
+            "id": 13,
+            "module": "ai-local-agent:RunLocalAIAgent",
+            "version": 0,
+            "parameters": {
+                "makeConnectionId": 13680006
+            },
+            "mapper": {
+                "files": [],
+                "message": "# Informationen zu der zu verarbeitenden E-Mail\n\nBetreff: \"{{11.subject}}\"\nAbsender: \"{{11.from.emailAddress}}\"\n\nBody:\n---\n{{11.bodyPreview}}\n---\n\nAnhänge:\n {{27.text}}",
+                "timeout": "",
+                "threadId": "",
+                "outputType": "make-schema",
+                "modelConfig": {
+                    "recursionLimit": 300,
+                    "iterationsFromHistoryCount": "10"
+                },
+                "defaultModel": "gpt-5.2",
+                "outputSchema": [
+                    {
+                        "help": "level of confidence of the categorization in percent",
+                        "name": "confidence",
+                        "type": "number",
+                        "label": "confidence level of the categorization",
+                        "default": "",
+                        "required": true
+                    },
+                    {
+                        "help": "categorization of the email; use one of following values [invoice, delivery, none]",
+                        "name": "categorization",
+                        "type": "text",
+                        "label": "categorization",
+                        "default": "",
+                        "required": true,
+                        "multiline": false
+                    },
+                    {
+                        "help": "reason for the categorization and the confidence level",
+                        "name": "reason",
+                        "type": "text",
+                        "label": "reason",
+                        "default": "",
+                        "required": true,
+                        "multiline": false
+                    },
+                    {
+                        "help": "The ID of the attachment which is most likely the invoice. (Only use this if the mail is an invoice.)",
+                        "name": "invoiceAttachmentId",
+                        "type": "text",
+                        "label": "ID of invoice attachment",
+                        "default": "",
+                        "required": false,
+                        "multiline": false
+                    }
+                ],
+                "systemPrompt": "# Rolle und Aufgaben\n\nAgiere als Experte mit langjähriger Erfahrung im Bereich Assistenz der Geschäftsführung, Backoffice mit Fokus auf Vorbereitung der Buchhaltung, insbesondere der Verarbeitung von E-Mails. Deine Aufgabe ist es eingehende E-Mails zu prüfen und zu kategorisieren, ob es sich dabei um eine E-Mail mit einer Rechnung eines Lieferanten (also einen Rechnungseingang) oder um einen Lieferschein eines Lieferanten handelt. Hierfür werden dir die wesentliche Informationen über die E-Mail bereit gestellt. Bitte beachte, dass auch Antworten auf selbst versendete Rechnungen mit dabei sein könnten, diese allerdings unbedingt aussortiert werden müssen, da nur Kreditorenrechnungen verarbeitet werden sollen. Gebe als Ausgabe \"invoice\" zurück, wenn es sich um eine Kreditorenrechnung handelt. Nutze \"delivery\", wenn es sich um einen Lieferschein handelt. Anderenfalls nutze \"none\". Dazu gib bitte auch das Konfidenzniveau (zwischen 0 und 100 in Prozent) aus - also wie sicher du mit der Kategorisierung bist.\nDarüber hinaus gebe eine Begründung für die Einstufung ab.\n\nSofern die E-Mail Anhänge hat, werden diese ebenfalls mit Name, Content-Typ und ID aufgelistet. Sollte es sich bei dem E-Mail-Typ um eine Rechnungsmail halten, erkenne bitte den zugehörigen Anhang dazu und gib hier die ID zu diesem ebenfalls mit aus.\n\nEinige Lieferanten verwenden schwer als Rechnung erkennbare E-Mails. Hierfür steht dir eine Liste mit Sonderregeln (siehe Abschnitt \"Sonderregeln für Lieferanten\") für solche Lieferanten bereit. Prüfe bitte, ob der erkannte Lieferant in dieser Liste aufgeführt ist und nutze die erweiterten Regeln nur in diesem Fall.\n\nGib dir sehr viel Mühe, das ist extrem wichtig für eine saubere Verarbeitung. Vielen Dank!",
+                "makeConnectionId": 13680006
+            },
+            "metadata": {
+                "designer": {
+                    "x": 900,
+                    "y": 900
+                },
+                "restore": {
+                    "expect": {
+                        "files": {
+                            "mode": "chose"
+                        },
+                        "outputType": {
+                            "label": "Data structure"
+                        },
+                        "defaultModel": {
+                            "mode": "chose",
+                            "label": "GPT-5.2The best model for coding and agentic tasks with configurable reasoning effort",
+                            "nested": []
+                        },
+                        "outputSchema": {
+                            "items": [
+                                null,
+                                null,
+                                null,
+                                null
+                            ]
+                        },
+                        "makeConnectionId": {
+                            "data": {
+                                "scoped": "true",
+                                "connection": "ai-provider"
+                            },
+                            "label": "My Make's AI Provider connection"
+                        }
+                    }
+                },
+                "expect": [
+                    {
+                        "name": "makeConnectionId",
+                        "type": "account:ai-provider,openai-gpt-3,anthropic-claude,gemini-ai-q9zyjp,ai-agent-foundry-openai,ai-agent-foundry-non-openai,mistral-ai,cohere,groq,ai-agent-xai,amazon-bedrock,ai-agent-openai-compatible",
+                        "label": "Connection",
+                        "required": true
+                    },
+                    {
+                        "name": "systemPrompt",
+                        "type": "text",
+                        "label": "Instructions"
+                    },
+                    {
+                        "name": "message",
+                        "type": "text",
+                        "label": "Input",
+                        "required": true
+                    },
+                    {
+                        "name": "files",
+                        "spec": [
+                            {
+                                "name": "fileName",
+                                "type": "filename",
+                                "label": "File name",
+                                "semantic": "file:name"
+                            },
+                            {
+                                "name": "data",
+                                "type": "buffer",
+                                "label": "Data",
+                                "semantic": "file:data"
+                            }
+                        ],
+                        "type": "array",
+                        "label": "Input files"
+                    },
+                    {
+                        "name": "threadId",
+                        "type": "text",
+                        "label": "Conversation ID"
+                    },
+                    {
+                        "name": "modelConfig",
+                        "spec": [
+                            {
+                                "name": "tokenLimit",
+                                "type": "hidden",
+                                "label": "Max output tokens"
+                            },
+                            {
+                                "name": "recursionLimit",
+                                "type": "hidden",
+                                "label": "Steps per agent call"
+                            },
+                            {
+                                "name": "iterationsFromHistoryCount",
+                                "type": "number",
+                                "label": "Maximum conversation history"
+                            }
+                        ],
+                        "type": "collection",
+                        "label": "Model configuration"
+                    },
+                    {
+                        "name": "timeout",
+                        "type": "number",
+                        "label": "Step timeout",
+                        "validate": {
+                            "max": 600,
+                            "min": 120
+                        }
+                    },
+                    {
+                        "name": "outputType",
+                        "type": "select",
+                        "label": "Response format",
+                        "validate": {
+                            "enum": [
+                                "text",
+                                "make-schema"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "defaultModel",
+                        "type": "select",
+                        "label": "Model",
+                        "required": true
+                    },
+                    {
+                        "name": "outputSchema",
+                        "spec": [
+                            {
+                                "name": "name",
+                                "type": "text",
+                                "label": "Name",
+                                "required": true,
+                                "placeholder": "Enter name"
+                            },
+                            {
+                                "name": "label",
+                                "type": "text",
+                                "label": "Label"
+                            },
+                            {
+                                "name": "help",
+                                "type": "text",
+                                "label": "Description",
+                                "placeholder": "Enter description"
+                            },
+                            {
+                                "name": "type",
+                                "type": "udttype",
+                                "label": "Type",
+                                "required": true
+                            }
+                        ],
+                        "type": "udtspec",
+                        "label": "Response structure"
+                    }
+                ],
+                "advanced": true
+            },
+            "tools": []
+        },
+        {
+            "id": 14,
+            "module": "builtin:BasicRouter",
+            "version": 1,
+            "mapper": null,
+            "metadata": {
+                "designer": {
+                    "x": 1200,
+                    "y": 450
+                }
+            },
+            "routes": [
+                {
+                    "flow": [
+                        {
+                            "id": 17,
+                            "module": "builtin:BasicRouter",
+                            "version": 1,
+                            "filter": {
+                                "name": "invoice",
+                                "conditions": [
+                                    [
+                                        {
+                                            "a": "{{13.jsonResponse.categorization}}",
+                                            "b": "invoice",
+                                            "o": "text:equal"
+                                        }
+                                    ]
+                                ]
+                            },
+                            "mapper": null,
+                            "metadata": {
+                                "designer": {
+                                    "x": 1500,
+                                    "y": 150
+                                }
+                            },
+                            "routes": [
+                                {
+                                    "flow": [
+                                        {
+                                            "id": 31,
+                                            "module": "microsoft-email:listAttachments",
+                                            "version": 2,
+                                            "parameters": {
+                                                "__IMTCONN__": 13824026
+                                            },
+                                            "mapper": {
+                                                "limit": "5",
+                                                "message": "{{11.id}}"
+                                            },
+                                            "metadata": {
+                                                "designer": {
+                                                    "x": 1800,
+                                                    "y": 0
+                                                },
+                                                "restore": {
+                                                    "expect": {
+                                                        "message": {
+                                                            "mode": "edit"
+                                                        }
+                                                    },
+                                                    "parameters": {}
+                                                },
+                                                "parameters": [
+                                                    {
+                                                        "name": "__IMTCONN__",
+                                                        "type": "account:azure",
+                                                        "label": "Connection",
+                                                        "required": true
+                                                    }
+                                                ],
+                                                "expect": [
+                                                    {
+                                                        "name": "message",
+                                                        "type": "select",
+                                                        "label": "Email ID",
+                                                        "required": true
+                                                    },
+                                                    {
+                                                        "name": "limit",
+                                                        "type": "uinteger",
+                                                        "label": "Limit"
+                                                    }
+                                                ]
+                                            }
+                                        },
+                                        {
+                                            "id": 15,
+                                            "module": "onedrive:uploadAFile",
+                                            "version": 2,
+                                            "parameters": {
+                                                "__IMTCONN__": 13824026
+                                            },
+                                            "filter": {
+                                                "name": "",
+                                                "conditions": [
+                                                    [
+                                                        {
+                                                            "a": "{{31.id}}",
+                                                            "b": "{{13.jsonResponse.invoiceAttachmentId}}",
+                                                            "o": "text:equal"
+                                                        }
+                                                    ]
+                                                ]
+                                            },
+                                            "mapper": {
+                                                "data": "{{31.data}}",
+                                                "enter": "id",
+                                                "folder": "/",
+                                                "select": "my",
+                                                "select1": "no",
+                                                "filename": "{{31.name}}",
+                                                "conflictBehavior": "replace"
+                                            },
+                                            "metadata": {
+                                                "designer": {
+                                                    "x": 2100,
+                                                    "y": 0
+                                                },
+                                                "restore": {
+                                                    "expect": {
+                                                        "enter": {
+                                                            "label": "Folder Location ID"
+                                                        },
+                                                        "folder": {
+                                                            "mode": "chose",
+                                                            "path": []
+                                                        },
+                                                        "select": {
+                                                            "label": "My Drive"
+                                                        },
+                                                        "select1": {
+                                                            "label": "No"
+                                                        },
+                                                        "conflictBehavior": {
+                                                            "label": "Replace the existing file"
+                                                        }
+                                                    },
+                                                    "parameters": {}
+                                                },
+                                                "parameters": [
+                                                    {
+                                                        "name": "__IMTCONN__",
+                                                        "type": "account:azure",
+                                                        "label": "Connection",
+                                                        "required": true
+                                                    }
+                                                ],
+                                                "expect": [
+                                                    {
+                                                        "name": "enter",
+                                                        "type": "select",
+                                                        "label": "Enter (Folder Location ID & Path)",
+                                                        "required": true,
+                                                        "validate": {
+                                                            "enum": [
+                                                                "id",
+                                                                "path"
+                                                            ]
+                                                        }
+                                                    },
+                                                    {
+                                                        "name": "filename",
+                                                        "type": "filename",
+                                                        "label": "File Name",
+                                                        "required": true
+                                                    },
+                                                    {
+                                                        "name": "data",
+                                                        "type": "buffer",
+                                                        "label": "Data",
+                                                        "required": true
+                                                    },
+                                                    {
+                                                        "name": "conflictBehavior",
+                                                        "type": "select",
+                                                        "label": "If the File with the Same Name Exists",
+                                                        "required": true,
+                                                        "validate": {
+                                                            "enum": [
+                                                                "replace",
+                                                                "rename",
+                                                                "fail"
+                                                            ]
+                                                        }
+                                                    },
+                                                    {
+                                                        "name": "description",
+                                                        "type": "text",
+                                                        "label": "Description"
+                                                    },
+                                                    {
+                                                        "name": "select",
+                                                        "type": "select",
+                                                        "label": "Choose your OneDrive location",
+                                                        "required": true,
+                                                        "validate": {
+                                                            "enum": [
+                                                                "my",
+                                                                "site",
+                                                                "group"
+                                                            ]
+                                                        }
+                                                    },
+                                                    {
+                                                        "name": "select1",
+                                                        "type": "select",
+                                                        "label": "Enable to Enter a Drive ID",
+                                                        "required": true,
+                                                        "validate": {
+                                                            "enum": [
+                                                                "yes",
+                                                                "no"
+                                                            ]
+                                                        }
+                                                    },
+                                                    {
+                                                        "name": "folder",
+                                                        "type": "folder",
+                                                        "label": "Folder"
+                                                    }
+                                                ]
+                                            }
+                                        }
+                                    ]
+                                },
+                                {
+                                    "flow": [
+                                        {
+                                            "id": 21,
+                                            "module": "microsoft-email:moveAMessage",
+                                            "version": 2,
+                                            "parameters": {
+                                                "__IMTCONN__": 13824026
+                                            },
+                                            "mapper": {
+                                                "folder": "/",
+                                                "message": "{{11.id}}"
+                                            },
+                                            "metadata": {
+                                                "designer": {
+                                                    "x": 1800,
+                                                    "y": 300
+                                                },
+                                                "restore": {
+                                                    "expect": {
+                                                        "folder": {
+                                                            "mode": "chose"
+                                                        },
+                                                        "message": {
+                                                            "mode": "edit"
+                                                        }
+                                                    },
+                                                    "parameters": {}
+                                                },
+                                                "parameters": [
+                                                    {
+                                                        "name": "__IMTCONN__",
+                                                        "type": "account:azure",
+                                                        "label": "Connection",
+                                                        "required": true
+                                                    }
+                                                ],
+                                                "expect": [
+                                                    {
+                                                        "mode": "edit",
+                                                        "name": "message",
+                                                        "type": "select",
+                                                        "label": "Email ID",
+                                                        "required": true
+                                                    },
+                                                    {
+                                                        "name": "folder",
+                                                        "type": "folder",
+                                                        "label": "Mail Folder",
+                                                        "required": true
+                                                    }
+                                                ]
+                                            }
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "flow": [
+                        {
+                            "id": 19,
+                            "module": "microsoft-email:moveAMessage",
+                            "version": 2,
+                            "parameters": {
+                                "__IMTCONN__": 13824026
+                            },
+                            "filter": {
+                                "name": "none",
+                                "conditions": [
+                                    [
+                                        {
+                                            "a": "{{13.jsonResponse.categorization}}",
+                                            "b": "none",
+                                            "o": "text:equal"
+                                        }
+                                    ]
+                                ]
+                            },
+                            "mapper": {
+                                "folder": "/",
+                                "message": "{{11.id}}"
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 1500,
+                                    "y": 600
+                                },
+                                "restore": {
+                                    "expect": {
+                                        "folder": {
+                                            "mode": "chose"
+                                        },
+                                        "message": {
+                                            "mode": "edit"
+                                        }
+                                    },
+                                    "parameters": {}
+                                },
+                                "parameters": [
+                                    {
+                                        "name": "__IMTCONN__",
+                                        "type": "account:azure",
+                                        "label": "Connection",
+                                        "required": true
+                                    }
+                                ],
+                                "expect": [
+                                    {
+                                        "mode": "edit",
+                                        "name": "message",
+                                        "type": "select",
+                                        "label": "Email ID",
+                                        "required": true
+                                    },
+                                    {
+                                        "name": "folder",
+                                        "type": "folder",
+                                        "label": "Mail Folder",
+                                        "required": true
+                                    }
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "flow": [
+                        {
+                            "id": 20,
+                            "module": "microsoft-email:moveAMessage",
+                            "version": 2,
+                            "parameters": {
+                                "__IMTCONN__": 13824026
+                            },
+                            "filter": {
+                                "name": "delivery",
+                                "conditions": [
+                                    [
+                                        {
+                                            "a": "{{13.jsonResponse.categorization}}",
+                                            "b": "delivery",
+                                            "o": "text:equal"
+                                        }
+                                    ]
+                                ]
+                            },
+                            "mapper": {
+                                "folder": "/",
+                                "message": "{{11.id}}"
+                            },
+                            "metadata": {
+                                "designer": {
+                                    "x": 1500,
+                                    "y": 900
+                                },
+                                "restore": {
+                                    "expect": {
+                                        "folder": {
+                                            "mode": "chose"
+                                        },
+                                        "message": {
+                                            "mode": "edit"
+                                        }
+                                    },
+                                    "parameters": {}
+                                },
+                                "parameters": [
+                                    {
+                                        "name": "__IMTCONN__",
+                                        "type": "account:azure",
+                                        "label": "Connection",
+                                        "required": true
+                                    }
+                                ],
+                                "expect": [
+                                    {
+                                        "mode": "edit",
+                                        "name": "message",
+                                        "type": "select",
+                                        "label": "Email ID",
+                                        "required": true
+                                    },
+                                    {
+                                        "name": "folder",
+                                        "type": "folder",
+                                        "label": "Mail Folder",
+                                        "required": true
+                                    }
+                                ]
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+    ],
+    "metadata": {
+        "instant": false,
+        "version": 1,
+        "scenario": {
+            "roundtrips": 1,
+            "maxErrors": 3,
+            "autoCommit": true,
+            "autoCommitTriggerLast": true,
+            "sequential": false,
+            "slots": null,
+            "confidential": false,
+            "dataloss": false,
+            "dlq": false,
+            "freshVariables": false
+        },
+        "designer": {
+            "orphans": []
+        },
+        "zone": "eu2.make.com",
+        "notes": []
+    }
+}
